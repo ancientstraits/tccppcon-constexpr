@@ -22,285 +22,160 @@
 <body>
 
 <section>
-    <h1 id="landing" data-type="slide-header">C++ Metaprogramming With <code>constexpr</code></h1>
+    <h1 id="landing" data-type="slide-header">Usage of the Lua C API</h1>
     <img class="centered" src="img/tccppcon.png" width="500" style="margin-top: 40px; margin-left: 12em">
     <ul style="font-size: 100%; margin-left: 10em; font-weight: bold">
-        <li>motivation: C++98 metaprogramming</li>
-        <li>C++11 through C++20 constexpr</li>
-        <li><code>constinit</code>, <code>consteval</code>, pitfalls</li>
-        <li><code>constexpr</code> support in standard library</li>
-        <li>15 min Q&A</li>
-    </ul>
-</section>
-
-<section style="margin-top: 0">
-    <h1 id="heading-function-templates" data-type="slide-header">Introduction: Metaprogramming and C++98</h1>
-
-    <ul>
-        <li><b>Idea:</b> some information known at compile time, but hard/impossible to hardcode
-            <ul>
-                <li>precise constants, e.g. &pi;</li>
-                <li>constants dependent on template parameters</li>
-                <li>lookup tables</li>
-            </ul>
-        </li>
-        <li><b>Solution:</b> Metaprogramming</li>
-    </ul>
-    <pre class="codeblock language-cpp" data-reveal="1">
-// Ideally: use factorial at compile time like any other function
-unsigned factorial(unsigned n) {
-    return n == 0 ? 1 : n * factorial(n - 1);
-}
-
-// C++98: template metaprogramming
-template &lt;unsigned N&gt;
-struct factorial {
-    /* ... */
-};
-</pre>
-</section>
-
-<section>
-    <h1 id="non-type-template-parameters" data-type="slide-header"><code>constexpr</code> Keyword (since C++11)</h1>
-    <div>
-        <p><code>constexpr</code> ...</p>
-        <ul>
-            <li>implies <code>const</code> for variables, <code>inline</code> for global functions</li>
-            </li>
-            <li class="li-checkmark-button">makes our function calls, variable uses constant expressions</li>
-            <li class="li-arrow">results can be used as template arguments, array sizes, etc.</li>
-            <li class="li-checkmark-button">constructors allow for constant initialization (for <i>literal types</i>)
-            </li>
-        </ul>
-    </div>
-    <div data-reveal="1">
-        <p><code>constexpr</code> puts heavy restrictions on our functions:</p>
-        <ul>
-            <li class="li-prohibited">no <code>void</code> return type, no <code>virtual</code></li>
-            <li class="li-prohibited">only <i>literal types</i> as inputs and outputs</li>
-            <li class="li-prohibited">needs to be defined before used (can't split into header/source file)</li>
-            <li class="li-prohibited">one set of inputs must produce constant expression</li>
-            <li class="li-prohibited" data-reveal="2"><b>only evaluated statement allowed is a single <code>return</code></b></li>
-        </ul>
-    </div>
-</section>
-
-<section>
-    <h1 id="why-these-restrictions" data-type="slide-header">Why All These Restrictions?</h1>
-
-    <div>
-        <h3><code>constexpr</code> Affects Compilation</h3>
-        <pre class="codeblock language-cpp">
-constexpr std::size_t compute_size() { return ...; }
-
-constexpr std::array&lt;int, compute_size()&gt; stuff create_lut() { return ...; }
-
-constexpr auto lut = create_lut();
-</pre>
-        <p data-reveal="1"><b>Consequence:</b> <code>constexpr</code> functions interpreted, not compiled</p>
-    </div>
-
-    <div data-reveal="2">
-        <h3 style="margin-top: 48px"><code>constexpr</code> functions must be <i>pure</i></h3>
-        <ul>
-            <li>same inputs &rArr; same outputs (determinism)</li>
-            <li>no side effects (mutation of references, global variables, etc.) (until C++14)</li>
-        </ul>
-    </div>
-</section>
-
-<section>
-    <h1 id="cpp14-relaxations" data-type="slide-header">C++14 Relaxations on <code>constexpr</code> Functions
-    </h1>
-    <ul style="margin-top: 2em">
-        <li class="li-checkmark-button">almost all statements now usable in constexpr functions, except ...
-            <ul>
-                <li class="li-prohibited"><code>goto</code> and labels (except <code>case</code>, <code>default</code>)
-                </li>
-                <li class="li-prohibited"><code>try</code>, <code>catch</code>, <code>asm</code></li>
-                <li class="li-prohibited">definition of <i>non-literal</i> variables</li>
-                <li class="li-prohibited">definition of <code>static</code>/<code>extern</code> variables</li>
-                <li class="li-prohibited">uninitialized variables, uninitialized members for <code>constexpr</code>
-                    constructors
-                </li>
-            </ul>
-        </li>
-        <li class="li-checkmark-button" data-reveal="1"><code>void</code> return types allowed</li>
-        <li class="li-checkmark-button" data-reveal="2">more expressions now constant expressions (e.g. <code>++</code>)
-        </li>
+		<li>A brief overview of Lua</li>
+		<li>Regular Lua vs LuaJIT</li>
+		<li>Sample Usage</li>
     </ul>
 </section>
 
 <section>
-    <h1 id="cpp17-relaxations" data-type="slide-header">C++17 Relaxations <code>constexpr</code> Functions</h1>
-    <ul>
-        <li><code>constexpr</code> implies <code>inline</code> for <code>static</code> data members</li>
-        <li class="li-checkmark-button">closure types i.e. <i>"lambdas"</i> are <i>literal types</i></li>
-        <li class="li-checkmark-button">lambda expressions in constant expressions</li>
-        <li class="li-checkmark-button">only one union member needs to be <i>literal</i></li>
-    </ul>
-    <div>
-        <h4><i>Constexpr if</i> statement, <i>"Type Deciding Function Idiom"</i></h4>
-        <pre class="codeblock language-cpp">
-template &lt;typename L, typename R&gt;
-constexpr auto max_type_impl() {
-    if constexpr (sizeof(R) > sizeof(L)) return R{};
-    else return L{};
+	<h1 data-type="slide-header">A Brief overview of Lua</h1>
+	<p>Lua is a very simple scripting lanaguage. It has many quirks, such as:</p>
+	<ul>
+		<li>The only primitives in Lua are the number and string.</li>
+		<li>The only complex data type in Lua is the table, which emulates an object and an array.</li>
+		<li>Variables are global by default, but can be declared local with the <code>local</code> keyword.</li>
+	</ul>
+	<img class="centered" src="img/lua.png" width="350">
+</section>
+
+<section>
+	<h1 data-type="slide-header">Lua Example</h1>
+	<pre class="codeblock language-lua">
+print("Hello, World!") -- prints to stdout
+
+do -- a new scope (like { statements; } in C)
+	global_var = 4319 -- Will be present in the whole program
+	local local_var = 3043 -- Will only be present in this scope
+end
+print(global_var) --&gt; 4319
+print(local_var)  --&gt; nil
+
+local x, y = 12, 903.44 -- numbers can be floating-point
+local a, b, c = 'together', "c and", [[
+see
+plus
+plus!!!
+]] -- multiline string literal
+	 </pre>
+</section>
+
+<section>
+	<h1 data-type="slide-header">Lua Example</h1>
+	<pre class="codeblock language-lua">
+-- In lua, if you don't specify table keys, they start at 1, and get incremented.
+local table_as_arr = {43, 12, "lua", 32.49}
+print(table_as_arr[1]) --&gt; 43
+print(table_as_arr[4]) --&gt; 32.49
+print(#table_as_arr)   --&gt; 4
+-- Iterate over the table with `ipairs` to get all integer keys.
+for k, v in ipairs(table_as_arr) do
+	print(k, v)
+end
+
+-- This table has string and number keys that are stated.
+-- It behaves like a hashmap (ex: an object in JS).
+local table_as_obj = {key = "val", foo = 98, [0.32] = "a", [".?ex="] = "b"}
+-- Iterate over the table with `pairs` to get all keys.
+for k, v in pairs(table_as_obj) do
+	print(k, v)
+end
+	</pre>
+</section>
+
+<section>
+	<h1 data-type="slide-header">Lua Example</h1>
+	<pre class="codeblock language-lua">-- Lua has functions.
+function add(a, b)
+	return a + b
+end
+print(add(1, 2)) --&gt; 3
+-- functions are first-class.
+local p = add
+print(p(1, 2)) --&gt; 3
+
+function run(cb)
+	print(cb("hello", 1, 2))
+end
+run(function(s, a, b)
+	return string.format("a, b, s = %s, %d, %d", a, b, s)
+end) --&gt; a, b, s = 1, 2, hello</pre>
+	<p>
+	Lua is a very small language, so although there is a lot left to cover, there is not too much.
+	You can learn more about the Lua language by scouring the Web.
+</section>
+
+<section>
+	<h1 data-type="slide-header">The Lua C API</h1>
+	<p>
+	Lua is widely used as a configuration language, since it can easily be embedded into other programs.
+	Lua is actually a library, and the interpreter is just a program that uses that library.
+	Your program can also use that library in order to interface with a script for configuration.
+
+	Some programs which embed Lua:
+	<ul>
+		<li>MPV can use Lua plugins (in fact, you can make it a video editor!)
+		<li>Neovim (and Vim sometimes) has Lua support, and you can write plugins in Lua.
+		<li>Love is a game engine which runs a Lua game script.
+	</ul>
+
+	<!-- <p> Now, you will learn how to embed Lua in your own program. -->
+
+	<img class=centered height=250 src=img/programs.png>
+</section>
+
+<section>
+	<h1 data-type=slide-header>Lua Library Versions</h1>
+	<p> There are many versions of Lua, like 5.1, 5.2, 5.3, and 5.4.
+	Unlike JavaScript, there is not a big push to use the latest version of Lua.
+	I will be using Lua 5.1 for this tutorial because of LuaJIT, which I will explain right now.
+</section>
+
+<section>
+	<h1 data-type=slide-header>Regular Lua vs LuaJIT</h1>
+	<ul>
+		<li> Regular Lua (lua) uses a bytecode VM to execute the code.
+		<li> LuaJIT (luajit) is a version of Lua that uses JIT compilation instead.
+			This makes it much faster, in fact making it the fastest script runner!
+	</ul>
+	<img class=centered src=img/bench.png height=450>
+</section>
+
+<section>
+	<h1 data-type=slide-header>The LuaJIT C API</h1>
+	<p> LuaJIT has a C API just like regular Lua, and it models Lua 5.1's API.
+	This means that if you write code that interfaces with Lua 5.1,
+	you can link with LuaJIT instead of Lua 5.1 and get a much faster performance!
+	This is why I am going to teach Lua 5.1's API for this tutorial.
+	<p> To compile the program, link with either Lua 5.1 or LuaJIT:
+	<pre class="codeblock language-bash">
+gcc test.c `pkg-config --cflags --libs luajit` # compile with LuaJIT
+gcc test.c -I/path/to/luajit -lluajit          # if you don't have pkg-config
+gcc test.c `pkg-config --cflags --libs lua5.1` # compile with regular Lua 5.1
+	</pre>
+</section>
+
+<section>
+	<h1 data-type=slide-header>Run a Lua File</h1>
+	<p> The following program will run a file <code>test.lua</code>
+	in the same way that you would do <code>lua test.lua</code>.
+	<pre class="codeblock language-c">
+#include &lt;lua.h&gt;
+#include &lt;lauxlib.h&gt;
+#include &lt;lualib.h&gt;
+
+int main() {
+	lua_State* L = luaL_newstate(); // This state will be passed around a lot
+	luaL_openlibs(L); // Open the standard libraries
+	luaL_dofile(L, "test.lua"); // Run the Lua file
+	lua_close(L); // Free the state
 }
-
-template &lt;typename L, typename R&gt;
-using max_type = decltype(max_type&lt;L, R&gt;());
-// alternative:  std::conditional_t&lt;sizeof(R) > sizeof(L), R, L>;
-</pre>
-    </div>
-</section>
-
-<section>
-    <h1 id="cpp20-relaxations" data-type="slide-header">C++20 Relaxations on <code>constexpr</code> Functions</h1>
-    <ul style="margin-top: 2em">
-        <li class="li-checkmark-button"><code>virtual</code> member functions, destructors</li>
-        <li class="li-checkmark-button">uninitialized variables, data members</li>
-        <li class="li-checkmark-button"><code>try</code>, <code>asm</code> allowed, but can't actually evaluate</li>
-        <li class="li-checkmark-button">
-            <code>std::is_constant_evaluated</code>, <code>std::construct_at</code>,<code>std::bit_cast</code>
-        </li>
-    </ul>
-    <div data-reveal="1">
-        <h4><code>new</code> and <code>delete</code> in <code>constexpr</code> Functions</h4>
-        <pre class="codeblock language-cpp">
-constexpr void use_memory() {
-    int *x = new int;
-    delete x; // OK, x is deleted before end of function
-}
-
-constexpr std::string use_string() {
-    return "hi"; // OK, but only supported by MSVC right now
-}
-</pre>
-    </div>
-</section>
-
-<section>
-    <h1 id="cpp20-constinit-consteval" data-type="slide-header">C++20 <code>constinit</code> And <code>consteval</code>
-    </h1>
-    <h4><code>constinit</code></h4>
-    <p style="margin-top: 0">Requests <i>zero initialization</i> or <i>constant initialization</i> for variable</p>
-    <pre class="codeblock language-cpp">
-constinit int x = constexpr_function();
-x = 5; // OK, constinit does not imply const
-</pre>
-
-    <div data-reveal="1">
-        <h4><code>consteval</code></h4>
-        <p style="margin-top: 0">Makes a function <i>immediate function</i>, so all calls must produce constant
-            expressions.</p>
-        <pre class="codeblock language-cpp">
-consteval int sqr(int n) { return n * n; }
-
-int x = 100, x2 = sqr(x);   // Error: Call does not produce a constant
-
-constexpr int dblsqr(int n) {
-  return 2 * sqr(n);        // Error: Enclosing function is not consteval
-}
-</pre>
-    </div>
-</section>
-
-<section>
-    <h1 id="constexpr-is-const-plus-constinit" data-type="slide-header">
-        <code>constexpr</code> Is <code>constinit</code> Plus <code>const</code>
-    </h1>
-    <p><code>constexpr</code> makes our variables usable at compile time, but we need to consider storage</p>
-    <pre class="codeblock language-cpp">
-template &lt;unsigned&gt;
-void fun();
-
-void select_and_call(unsigned n) {
-    // array of pointers to void(void) functions
-    constexpr void(*table[])(void) {
-        &fun<0>,
-        &fun<1>,
-        &fun<2>,
-        &fun<3>
-    };
-    table[n]();
-}
-</pre>
-</section>
-
-<section>
-    <h1 id="constexpr-in-the-standard-library" data-type="slide-header">
-        <code>constexpr</code> Support In The Standard Library
-    </h1>
-    <ul>
-        <li class="li-checkmark-button">most containers, algorithms, utility functions now <code>constexpr</code></li>
-        <li class="li-prohibited">
-            many nuisances, e.g. <code>std::move</code> since C++14, <code>std::swap</code> since C++20
-        </li>
-        <li class="li-prohibited">algorithms only <code>constexpr</code> since C++20</li>
-        <li class="li-prohibited">
-            <code>std::string</code>, <code>std::vector</code>, <code>std::optional</code> et al. since C++20
-        </li>
-        <li class="li-prohibited">many things not <code>constexpr</code> in practice</li>
-        <li class="li-prohibited">no <code>constexpr</code> math functions</li>
-    </ul>
-    <div data-reveal="1">
-        <h3>Compiler Magic Enhancing <code>constexpr</code> Capabilities</h3>
-        <ul>
-            <li>constant expression detection (until C++17) &rArr; <code>std::is_constant_evaluated</code></li>
-            <li>no <i>placement-new</i> &rArr; <code>std::construct_at</code></li>
-            <li>no <code>std::memcpy</code> type punning &rArr; <code>std::bit_cast</code></li>
-            <li>type traits, concepts, enhanced by <i>constexpr if</i> statement, etc.</li>
-        </ul>
-    </div>
-</section>
-
-<section>
-    <h1 id="cpp23-outlook" data-type="slide-header">C++23: Outlook</h1>
-    <div>
-        <h4 style="margin-top: 1.5em"><i>Consteval if</i> statement: <code>if consteval</code> [p1938]</h4>
-        <p>Similar to <code>std::is_constant_evaluated</code>, but creates <i>immediate function context</i></p>
-    </div>
-    <div data-reveal="1">
-        <h4 style="margin-top: 1.5em">Missing <code>constexpr</code> in <code>std::optional</code> and <code>std::variant</code>
-            [p2231]</h4>
-        <p>Fixes missing <code>constexpr</code> in standard library using <code>std::construct_at</code></p>
-    </div>
-    <div data-reveal="2">
-        <h4 style="margin-top: 1.5em"><code>constexpr</code> class [p2350]</h4>
-        <pre class="codeblock language-cpp">
-class SomeType constexpr {
-    /* implicitly constexpr */ void some_function();
-};
-</pre>
-        <p>Similar to <code>final</code>, makes all member functions <code>constexpr</code></p>
-    </div>
-</section>
-
-<section>
-    <h1 id="sources" data-type="slide-header">Also See</h1>
-    <div style="font-size: 92%">
-        <h4>cppreference.com</h4>
-        <ul>
-            <li><a href="https://en.cppreference.com/w/cpp/language/constexpr">Constexpr specifier</a></li>
-            <li><a href="https://en.cppreference.com/w/cpp/named_req/LiteralType">
-                C++ named requirements: <i>LiteralType</i>
-            </a></li>
-            <li><a href="https://en.cppreference.com/w/cpp/language/constant_expression">Constant expressions</a></li>
-        </ul>
-        <h4>open-std.org</h4>
-        <ul>
-            <li><a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2021/">C++ 2021 Paper Submissions</a></li>
-        </ul>
-        <h4>C++ Standards</h4>
-        <ul>
-            <li><a href="https://timsong-cpp.github.io/cppwp/n3337/">C++11 [n3337]</a></li>
-            <li><a href="https://timsong-cpp.github.io/cppwp/n4140/">C++14 [n4140]</a></li>
-            <li><a href="https://timsong-cpp.github.io/cppwp/n4659/">C++17 [n4659]</a></li>
-            <li><a href="https://timsong-cpp.github.io/cppwp/n4868/">C++20 [n4868]</a></li>
-            <li><a href="https://eel.is/c++draft/">C++23 (current working draft) [n4885]</a></li>
-        </ul>
-    </div>
+	</pre>
+	<p> After compiling the executable, put <code>print('hello')</code> in <code>test.lua</code>.
+	Run the executable, and it should print <code>hello</code>.
 </section>
 
 <section>
@@ -317,9 +192,9 @@ class SomeType constexpr {
 </header>
 
 <div id="slide-header-separator" class="slide-header-separator">
-    <b>Date:</b> <span class="mono">2021-08-07</span>
+    <b>Date:</b> <span class="mono">2022-08-05</span>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <b>Presenter:</b> <span class="mono">Eisenwave#7675</span>
+    <b>Presenter:</b> <span class="mono">TooManyUsersHaveThisUsername#8367</span>
     <span class="slide-header-invite">discord.gg/tccpp</span>
 </div>
 
