@@ -172,10 +172,29 @@ int main() {
 	luaL_openlibs(L); // Open the standard libraries
 	luaL_dofile(L, "test.lua"); // Run the Lua file
 	lua_close(L); // Free the state
-}
-	</pre>
+}</pre>
 	<p> After compiling the executable, put <code>print('hello')</code> in <code>test.lua</code>.
 	Run the executable, and it should print <code>hello</code>.
+	<p> Now, let's learn how to pass data in and out of a Lua script.
+</section>
+
+<section>
+	<h1 data-type=slide-header>Get Data from a Lua Script</h1>
+	<p> You can get global variables from a Lua script with <code>lua_getglobal()</code>.
+	<pre class="codeblock language-c">
+lua_getglobal(L, "my_global");
+double x = lua_tonumber(L, -1);
+printf("x is %f\n", x);
+	</pre>
+	<p> Since global functions are just global variables, you can call functions like this.
+	<pre class="codeblock language-c">
+lua_getglobal(L, "print");
+lua_pushstring(L, "Hello, World!");
+// The first argument is the number of args,
+// The second argument is the number of returns,
+// The third argument is weird.
+lua_pcall(L, 1, LUA_MULTRET, 0);
+	</pre>
 </section>
 
 <section>
